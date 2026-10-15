@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using HarmonyLib.Tools;
 using MelonLoader;
 using MelonLoader.NativeUtils;
 using MelonLoader.Utils;
@@ -27,7 +28,7 @@ public class Plugin : MelonPlugin
     public static void UnityPluginLoad(IntPtr ins)
     {
         interfaces = ins;
-        _instance.LoggerInstance.Msg($"IUnityInterfaces: {ins}");
+        _instance.LoggerInstance.Msg($"IUnityInterfaces: 0x{ins.ToString("X16")}");
 
         klak(ins);
 
@@ -40,13 +41,19 @@ public class Plugin : MelonPlugin
         if (MelonEnvironment.IsDotnetRuntime)
         {
             //We're not on mono. This must be an il2cpp game.
-            var klakhandle = NativeLibrary.Load($@"{MelonEnvironment.UnityGameDataDirectory}\Plugins\x86_64\{OnAirTap.Spout.Misc.pluginFilename}");
+            string klakpath = $@"{MelonEnvironment.UnityGameDataDirectory}\Plugins\x86_64\{OnAirTap.Spout.Misc.pluginFilename}";
+            LoggerInstance.Msg($"Opening plugin library: {klakpath}");
+            var klakhandle = NativeLibrary.Load(klakpath);
             var klakUPL = klakhandle.GetExport("UnityPluginLoad");
+            LoggerInstance.Msg($"Plugin UnityPluginLoad: 0x{klakUPL.ToString("X16")}");
 
             klak = Marshal.GetDelegateForFunctionPointer<UPLDelegate>(klakUPL);
 
-            var bridgehandle = NativeLibrary.Load($@"{MelonEnvironment.UnityGameDataDirectory}\Plugins\x86_64\UnityOpenXR.dll");
+            string bridgepath = $@"{MelonEnvironment.UnityGameDataDirectory}\Plugins\x86_64\UnityOpenXR.dll";
+            LoggerInstance.Msg($"Opening target library: {bridgepath}");
+            var bridgehandle = NativeLibrary.Load(bridgepath);
             var bridgeUPL = bridgehandle.GetExport("UnityPluginLoad");
+            LoggerInstance.Msg($"Target UnityPluginLoad: 0x{bridgeUPL.ToString("X16")}");
 
             _patch = UnityPluginLoad;
 
@@ -54,6 +61,7 @@ public class Plugin : MelonPlugin
 
             hook = new NativeHook<UPLDelegate>(bridgeUPL, patchptr);
             hook.Attach();
+            LoggerInstance.Msg("Native hook attached.");
         }
     }
 
