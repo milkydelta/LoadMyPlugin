@@ -1,7 +1,5 @@
 using MelonLoader;
-using OnAirTap.Melon;
+using milkydelta.LoadMyPlugin;
 
-[assembly: MelonInfo(typeof(Plugin), "spoutplugin", "1.2.0", "milkydelta")]
+[assembly: MelonInfo(typeof(Plugin), "LoadMyPlugin", "0.1.0", "milkydelta")]
 [assembly: MelonGame()]
-[assembly: MelonPlatformDomain(MelonPlatformDomainAttribute.CompatibleDomains.IL2CPP)]
-[assembly: HarmonyDontPatchAll]

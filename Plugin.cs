@@ -1,12 +1,10 @@
 ﻿using System.Runtime.InteropServices;
-using HarmonyLib.Tools;
 using MelonLoader;
 using MelonLoader.NativeUtils;
 using MelonLoader.Utils;
-using UnityEngine;
 using NativeLibrary = MelonLoader.NativeLibrary;
 
-namespace OnAirTap.Melon;
+namespace milkydelta.LoadMyPlugin;
 
 [UnmanagedFunctionPointer(CallingConvention.StdCall)]
 public delegate void UPLDelegate(
@@ -29,7 +27,7 @@ public class Plugin : MelonPlugin
     public static void UnityPluginLoad(IntPtr ins)
     {
         interfaces = ins;
-        _instance.LoggerInstance.Msg($"ins: {ins}");
+        _instance.LoggerInstance.Msg($"IUnityInterfaces: {ins}");
 
         klak(ins);
 
@@ -42,7 +40,7 @@ public class Plugin : MelonPlugin
         if (MelonEnvironment.IsDotnetRuntime)
         {
             //We're not on mono. This must be an il2cpp game.
-            var klakhandle = NativeLibrary.Load($@"{MelonEnvironment.UnityGameDataDirectory}\Plugins\x86_64\{Spout.Misc.pluginFilename}");
+            var klakhandle = NativeLibrary.Load($@"{MelonEnvironment.UnityGameDataDirectory}\Plugins\x86_64\{OnAirTap.Spout.Misc.pluginFilename}");
             var klakUPL = klakhandle.GetExport("UnityPluginLoad");
 
             klak = Marshal.GetDelegateForFunctionPointer<UPLDelegate>(klakUPL);

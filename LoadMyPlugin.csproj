@@ -1,0 +1,51 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>milkydelta.LMP</AssemblyName>
+    <RootNamespace>milkydelta.LoadMyPlugin</RootNamespace>
+    <LangVersion>10</LangVersion>
+    <Version>0.1.0</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>LoadMyPlugin</Product>
+    <Author>milkydelta</Author>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <MLPath>$(GameBaseDirectory)/MelonLoader</MLPath>
+    <MLAssembliesPath Condition="!Exists('$(MLPath)/net6')">$(MLPath)</MLAssembliesPath>
+    <MLAssembliesPath Condition="Exists('$(MLPath)/net6')">$(MLPath)/$(TargetFramework)</MLAssembliesPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="MelonLoader">
+      <HintPath>$(MLAssembliesPath)/MelonLoader.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(MLAssembliesPath)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <GameManagedDirectory>$(GameDataDirectory)/Managed</GameManagedDirectory>
+    <GameManagedDirectory Condition="Exists('$(MLPath)/Managed')">$(MLPath)/Managed</GameManagedDirectory>
+    <GameManagedDirectory Condition="Exists('$(MLPath)/Il2CppAssemblies')">$(MLPath)/Il2CppAssemblies</GameManagedDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="OAT.Klak.Spout.Runtime">
+      <HintPath>OAT.Klak.Spout.Runtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
