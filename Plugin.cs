@@ -19,62 +19,109 @@ public class Plugin : MelonPlugin
 
     static NativeHook<UPLDelegate> hook;
 
-    static UPLDelegate klak;
+    static UPLDelegate klak = null;
 
-    static UPLDelegate _patch;
+
 
     MelonPreferences_Category category;
     MelonPreferences_Entry<bool> entryLoadFromFolder;
     MelonPreferences_Entry<string[]> entryLoadPlugins;
     MelonPreferences_Entry<string> entryHookPlugin;
 
+    private static UPLDelegate _holdingDelegate = UnityPluginLoad; //static so there's no chance of it being GC'ed
     public static void UnityPluginLoad(IntPtr ins)
     {
         //Store the interface pointer
         interfaces = ins;
         _instance.LoggerInstance.Msg($"IUnityInterfaces: 0x{ins.ToString("X16")}");
 
-        //Load any registered plugins
-        klak(ins);
+        try {
+            //Load any registered plugins
+            klak?.Invoke(ins);
+        } finally {
+            //Call the original function
+            hook.Trampoline(ins);
+        }
+    }
 
-        //Call the original function
-        hook.Trampoline(ins);
+    private void AddPlugin(string path)
+    {
+        if (!File.Exists(path)) {
+            LoggerInstance.Error($"Plugin {path} does not exist!");
+            return;
+        }
+
+        LoggerInstance.Msg($"Opening plugin library: {path}");
+        NativeLibrary handle = NativeLibrary.Load(path);
+        IntPtr UPL = handle.GetExport("UnityPluginLoad");
+        LoggerInstance.Msg($"Plugin UnityPluginLoad: 0x{UPL.ToString("X16")}");
+
+        var deleg = Marshal.GetDelegateForFunctionPointer<UPLDelegate>(UPL);
+
+        if (klak == null) {klak = deleg;}
+        else {klak += deleg;}
+
+        LoggerInstance.Msg($"Added Plugin {Path.GetFileName(path)}");
     }
 
     public override void OnPreInitialization()
     {
         _instance = this;
-        if (MelonEnvironment.IsDotnetRuntime)
+
+        if (!MelonEnvironment.IsDotnetRuntime) { return; }
+        
+        category = MelonPreferences.CreateCategory("milkydelta_LoadMyPlugin");
+        entryHookPlugin = category.CreateEntry<string>("PluginToHook", "x86_64\\UnityOpenXR.dll");
+        entryLoadPlugins = category.CreateEntry<string[]>("PluginsToLoad", new string[] { });
+        entryLoadFromFolder = category.CreateEntry<bool>("LoadFromFolder", false);
+
         {
-            category = MelonPreferences.CreateCategory("milkydelta_LoadMyPlugin");
-            entryHookPlugin = category.CreateEntry<string>("PluginToHook","x86_64\\UnityOpenXR.dll");
-            entryLoadPlugins = category.CreateEntry<string[]>("PluginsToLoad",new string[]{});
-            entryLoadFromFolder = category.CreateEntry<bool>("LoadFromFolder",false);
+            var path = Path.Combine(MelonEnvironment.UnityGameDataDirectory, "Plugins",entryHookPlugin.Value);
+            if (!File.Exists(path))
+            {
+                LoggerInstance.Error($"Target Plugin {path} does not exist!");
+                return;
+            }
 
+            LoggerInstance.Msg($"Opening target library: {path}");
+            try
+            {
+                //Get the function
+                NativeLibrary lib = NativeLibrary.Load(path);
+                IntPtr targetUPL = lib.GetExport("UnityPluginLoad");
+                LoggerInstance.Msg($"Target UnityPluginLoad: 0x{targetUPL.ToString("X16")}");
 
-            //We're not on mono. This must be an il2cpp game.
-            string klakpath = $@"{MelonEnvironment.UnityGameDataDirectory}\Plugins\x86_64\{OnAirTap.Spout.Misc.pluginFilename}";
-            LoggerInstance.Msg($"Opening plugin library: {klakpath}");
-            var klakhandle = NativeLibrary.Load(klakpath);
-            var klakUPL = klakhandle.GetExport("UnityPluginLoad");
-            LoggerInstance.Msg($"Plugin UnityPluginLoad: 0x{klakUPL.ToString("X16")}");
+                //Patch it to call me instead.
+                IntPtr patchPtr = Marshal.GetFunctionPointerForDelegate(_holdingDelegate);
+                hook = new NativeHook<UPLDelegate>(targetUPL, patchPtr);
+                hook.Attach();
 
-            klak = Marshal.GetDelegateForFunctionPointer<UPLDelegate>(klakUPL);
+                LoggerInstance.Msg("Native hook attached.");
 
-            string bridgepath = $@"{MelonEnvironment.UnityGameDataDirectory}\Plugins\x86_64\UnityOpenXR.dll";
-            LoggerInstance.Msg($"Opening target library: {bridgepath}");
-            var bridgehandle = NativeLibrary.Load(bridgepath);
-            var bridgeUPL = bridgehandle.GetExport("UnityPluginLoad");
-            LoggerInstance.Msg($"Target UnityPluginLoad: 0x{bridgeUPL.ToString("X16")}");
+            }
+            catch (Exception e)
+            {
+                LoggerInstance.Error(e);
+                LoggerInstance.Error("Could not load and hook target library.");
+                return;
+            }
 
-            _patch = UnityPluginLoad;
+        }
 
-            var patchptr = Marshal.GetFunctionPointerForDelegate(_patch);
+        HashSet<string> pluginsUnique = new();
 
-            hook = new NativeHook<UPLDelegate>(bridgeUPL, patchptr);
-            hook.Attach();
-            LoggerInstance.Msg("Native hook attached.");
+        {
+            string bas = Path.Combine(MelonEnvironment.UnityGameDataDirectory, "Plugins");
+            foreach (string file in entryLoadPlugins.Value)
+            {
+                string path = Path.Combine(bas, file);
+                pluginsUnique.Add(path);
+            }
+        }
+
+        foreach (string path in pluginsUnique)
+        {
+            AddPlugin(path);
         }
     }
-
 }
