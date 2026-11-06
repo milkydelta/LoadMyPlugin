@@ -1,5 +1,4 @@
 ﻿using System.Runtime.InteropServices;
-using HarmonyLib.Tools;
 using MelonLoader;
 using MelonLoader.NativeUtils;
 using MelonLoader.Utils;
@@ -24,14 +23,21 @@ public class Plugin : MelonPlugin
 
     static UPLDelegate _patch;
 
+    MelonPreferences_Category category;
+    MelonPreferences_Entry<bool> entryLoadFromFolder;
+    MelonPreferences_Entry<string[]> entryLoadPlugins;
+    MelonPreferences_Entry<string> entryHookPlugin;
 
     public static void UnityPluginLoad(IntPtr ins)
     {
+        //Store the interface pointer
         interfaces = ins;
         _instance.LoggerInstance.Msg($"IUnityInterfaces: 0x{ins.ToString("X16")}");
 
+        //Load any registered plugins
         klak(ins);
 
+        //Call the original function
         hook.Trampoline(ins);
     }
 
@@ -40,6 +46,12 @@ public class Plugin : MelonPlugin
         _instance = this;
         if (MelonEnvironment.IsDotnetRuntime)
         {
+            category = MelonPreferences.CreateCategory("milkydelta_LoadMyPlugin");
+            entryHookPlugin = category.CreateEntry<string>("PluginToHook","x86_64\\UnityOpenXR.dll");
+            entryLoadPlugins = category.CreateEntry<string[]>("PluginsToLoad",new string[]{});
+            entryLoadFromFolder = category.CreateEntry<bool>("LoadFromFolder",false);
+
+
             //We're not on mono. This must be an il2cpp game.
             string klakpath = $@"{MelonEnvironment.UnityGameDataDirectory}\Plugins\x86_64\{OnAirTap.Spout.Misc.pluginFilename}";
             LoggerInstance.Msg($"Opening plugin library: {klakpath}");
