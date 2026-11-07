@@ -42,10 +42,4 @@
     <GameManagedDirectory Condition="Exists('$(MLPath)/Il2CppAssemblies')">$(MLPath)/Il2CppAssemblies</GameManagedDirectory>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Reference Include="OAT.Klak.Spout.Runtime">
-      <HintPath>OAT.Klak.Spout.Runtime.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
 </Project>
