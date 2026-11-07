@@ -42,24 +42,31 @@ public class Plugin : MelonPlugin
         }
     }
 
-    private void AddPlugin(string path)
-    {
+    private bool AddPlugin(string path) {
         if (!File.Exists(path)) {
             LoggerInstance.Error($"Plugin {path} does not exist!");
-            return;
+            return false;
         }
 
         LoggerInstance.Msg($"Opening plugin library: {path}");
-        NativeLibrary handle = NativeLibrary.Load(path);
-        IntPtr UPL = handle.GetExport("UnityPluginLoad");
-        LoggerInstance.Msg($"Plugin UnityPluginLoad: 0x{UPL.ToString("X16")}");
+        try {
+            NativeLibrary handle = NativeLibrary.Load(path);
+            IntPtr UPL = handle.GetExport("UnityPluginLoad");
+            LoggerInstance.Msg($"Plugin UnityPluginLoad: 0x{UPL.ToString("X16")}");
 
-        var deleg = Marshal.GetDelegateForFunctionPointer<UPLDelegate>(UPL);
+            var deleg = Marshal.GetDelegateForFunctionPointer<UPLDelegate>(UPL);
 
-        if (klak == null) {klak = deleg;}
-        else {klak += deleg;}
+            if (klak == null) {klak = deleg;}
+            else {klak += deleg;}
 
-        LoggerInstance.Msg($"Added Plugin {Path.GetFileName(path)}");
+            LoggerInstance.Msg($"Added Plugin {Path.GetFileName(path)}");
+        } catch (Exception e) {
+            LoggerInstance.Error(e);
+            LoggerInstance.Error("Could not load and add plugin");
+            return false;
+        }
+
+        return true;
     }
 
     bool ApplyTargetHook(string targetPath) {
